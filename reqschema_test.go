@@ -4,7 +4,7 @@ import "net/http"
 import "net/url"
 import "encoding/json"
 
-func TestRequestSchemaWithDecoder(t *testing.T) {
+func TestRequestSchemaWithJsonDecoder(t *testing.T) {
 	resource := map[string]string {
 		"name": "John",
 	}

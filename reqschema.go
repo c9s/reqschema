@@ -163,14 +163,16 @@ func (self * RequestSchema) Get(name string) (interface{}, error) {
 			return nil, err
 		}
 
-		decodeType := field.Tag.Get("decode")
-		if decodeType == "json" && field.Type.Name() == "string" {
-			var data interface{}
-			err := json.Unmarshal( []byte(value.(string)) , &data)
-			if err != nil {
-				return nil, nil
+		if field.Type.Name() == "string" {
+			decodeType := field.Tag.Get("decode")
+			if decodeType == "json" {
+				var data interface{}
+				err := json.Unmarshal( []byte(value.(string)) , &data)
+				if err != nil {
+					return nil, nil
+				}
+				return data, nil
 			}
-			return data, nil
 		}
 		return value, nil
 	}
