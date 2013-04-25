@@ -4,8 +4,6 @@ import "net/http"
 import "strconv"
 import "fmt"
 
-
-
 const defaultMaxMemory = 32 << 20 // 32MB
 
 /*
@@ -44,7 +42,17 @@ func Create(r * http.Request, schema interface{}) (*RequestSchema) {
 	return &RequestSchema{ Request: r, Schema: schema, ValueOfSchema: valueOf, TypeOfSchema: typeOf }
 }
 
-func (self * RequestSchema) GetTo(name string, value interface{}) error {
+
+
+/*
+Get the form value and convert the form value string to the type of given value,
+then use reflect to set the value back.
+
+The given value must be addressable, so that we can set value via reflect.
+
+Returns (found, error)
+*/
+func (self * RequestSchema) GetTo(name string, value interface{}) (bool,error) {
 	// get the value from pointer (Elem())
 	valueValue := reflect.ValueOf(value).Elem()
 	valueType := valueValue.Type()
@@ -57,11 +65,11 @@ func (self * RequestSchema) GetTo(name string, value interface{}) error {
 	if requestValues , ok := self.Request.Form[ name ]; ok && len(requestValues) > 0 {
 		newValue, err := parseStringByType(requestValues[0], valueType)
 		if err != nil {
-			return err
+			return true, err
 		}
 		switch t := newValue.(type) {
 		default:
-			panic( fmt.Sprintf("unsupported type %s" , t))
+			return true, fmt.Errorf( "unsupported type %s" , t)
 		case int32:
 			valueValue.SetInt( int64(newValue.(int32)) )
 		case int64:
@@ -75,8 +83,11 @@ func (self * RequestSchema) GetTo(name string, value interface{}) error {
 		case float32:
 			valueValue.SetFloat( float64(newValue.(float32)) )
 		}
+		return true, nil
 	}
-	return nil
+
+	// value not found, should not be error
+	return false, nil
 }
 
 func parseStringByType(value string, typeInfo reflect.Type) (interface{}, error) {
@@ -102,6 +113,7 @@ func parseStringByType(value string, typeInfo reflect.Type) (interface{}, error)
 
 
 
+
 func (self * RequestSchema) GetField(name string) *reflect.StructField {
 	field, found := self.TypeOfSchema.FieldByName(name)
 	if found {
@@ -110,20 +122,20 @@ func (self * RequestSchema) GetField(name string) *reflect.StructField {
 	return nil
 }
 
-func (self * RequestSchema) GetFieldName(name string) string {
+func (self * RequestSchema) GetParamName(name string) string {
 	field := self.GetField(name)
 	if field != nil {
-		fieldName := field.Tag.Get("field")
-		if fieldName != "" {
-			return fieldName
+		paramName := field.Tag.Get("param")
+		if paramName != "" {
+			return paramName
 		}
 	}
 	return ""
 }
 
 func (self * RequestSchema) Has(name string) bool {
-	fieldName := self.GetFieldName(name)
-	if requestValues, ok := self.Request.Form[ fieldName ]; ok && len(requestValues) > 0 {
+	paramName := self.GetParamName(name)
+	if requestValues, ok := self.Request.Form[ paramName ]; ok && len(requestValues) > 0 {
 		return true
 	}
 	return false
@@ -137,13 +149,13 @@ func (self * RequestSchema) Get(name string) (interface{}, error) {
 		return nil, nil
 	}
 
-	fieldName := field.Tag.Get("field")
-	if fieldName == "" {
+	paramName := field.Tag.Get("param")
+	if paramName == "" {
 		return nil, nil
 	}
 
 	// found value in form
-	if requestValues , ok := self.Request.Form[ fieldName ]; ok && len(requestValues) > 0 {
+	if requestValues , ok := self.Request.Form[ paramName ]; ok && len(requestValues) > 0 {
 		return parseStringByType(requestValues[0], field.Type)
 	}
 	return nil, nil

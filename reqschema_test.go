@@ -13,9 +13,9 @@ func TestRequestSchema(t *testing.T) {
 	}
 
 	type GoogleSearchRequest struct {
-		Query string `field:"q"`
-		Id64  int64  `field:"id64"`
-		Id    int    `field:"id"`
+		Query string `param:"q"`
+		Id64  int64  `param:"id64"`
+		Id    int    `param:"id"`
 	}
 
 	rschema := Create(req, &GoogleSearchRequest{})
@@ -48,9 +48,12 @@ func TestRequestSchema(t *testing.T) {
 	}
 
 	var id2 int64 = 0
-	err = rschema.GetTo("id",&id2)
+	found, err := rschema.GetTo("id",&id2)
 	if err != nil {
 		t.Error(err)
+	}
+	if ! found {
+		t.Error("id not found")
 	}
 	t.Log(id2)
 	if id2 != 13 {
