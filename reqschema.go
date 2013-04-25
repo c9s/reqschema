@@ -16,7 +16,7 @@ type UserAuthRequest struct {
 	UserId	 int `param:"id"`
 	UserName string `param:"username"`
 	Password string `param:"password"`
-	Resource string `param:"resource" decode:"json"`
+	ResourceJson string `param:"resource" decode:"json"`
 }
 
 func userAuthRequestHandler( w http.ResponseWriter, r * http.Request)
