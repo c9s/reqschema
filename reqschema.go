@@ -2,8 +2,6 @@ package reqschema
 import "reflect"
 import "net/http"
 import "strconv"
-import "fmt"
-
 
 const defaultMaxMemory = 32 << 20 // 32MB
 
@@ -35,15 +33,18 @@ type RequestSchema struct {
 func Create(r * http.Request, schema interface{}) (*RequestSchema) {
 	valueOf := reflect.ValueOf(schema).Elem()
 	typeOf := valueOf.Type()
+
+	if r.Form == nil {
+		// parse form
+		r.ParseMultipartForm(defaultMaxMemory)
+	}
 	return &RequestSchema{ Request: r, Schema: schema, ValueOfSchema: valueOf, TypeOfSchema: typeOf }
 }
 
 func (self * RequestSchema) GetTo(fieldName string, value interface{}) {
 	// get the value from pointer (Elem())
 	valueType := reflect.TypeOf(value)
-
-	fmt.Println( valueType )
-
+	// valueType.Type.Name()
 	_ = valueType
 }
 
@@ -91,7 +92,10 @@ func (self * RequestSchema) GetFieldName(name string) string {
 
 func (self * RequestSchema) Has(name string) bool {
 	fieldName := self.GetFieldName(name)
-
+	if requestValues, ok := self.Request.Form[ fieldName ]; ok && len(requestValues) > 0 {
+		return true
+	}
+	return false
 }
 
 
@@ -105,13 +109,6 @@ func (self * RequestSchema) Get(name string) (interface{}, error) {
 	fieldName := field.Tag.Get("field")
 	if fieldName == "" {
 		return nil, nil
-	}
-
-	// valueType := self.ValueOfSchema.FieldByName(name)
-
-	if self.Request.Form == nil {
-		// parse form
-		self.Request.ParseMultipartForm(defaultMaxMemory)
 	}
 
 	// found value in form
