@@ -38,7 +38,6 @@ func Create(r * http.Request, schema interface{}) (*RequestSchema) {
 	return &RequestSchema{ Request: r, Schema: schema, ValueOfSchema: valueOf, TypeOfSchema: typeOf }
 }
 
-
 func (self * RequestSchema) GetTo(fieldName string, value interface{}) {
 	// get the value from pointer (Elem())
 	valueType := reflect.TypeOf(value)
@@ -69,10 +68,36 @@ func parseStringByType(value string, typeInfo reflect.Type) (interface{}, error)
 }
 
 
+
+
+func (self * RequestSchema) GetField(name string) *reflect.StructField {
+	field, found := self.TypeOfSchema.FieldByName(name)
+	if found {
+		return &field
+	}
+	return nil
+}
+
+func (self * RequestSchema) GetFieldName(name string) string {
+	field := self.GetField(name)
+	if field != nil {
+		fieldName := field.Tag.Get("field")
+		if fieldName != "" {
+			return fieldName
+		}
+	}
+	return ""
+}
+
+func (self * RequestSchema) Has(name string) bool {
+	fieldName := self.GetFieldName(name)
+
+}
+
+
 func (self * RequestSchema) Get(name string) (interface{}, error) {
 	// Get The Field By Reflect
 	field, found := self.TypeOfSchema.FieldByName(name)
-
 	if ! found {
 		return nil, nil
 	}
