@@ -2,6 +2,9 @@ package reqschema
 import "reflect"
 import "net/http"
 import "strconv"
+import "fmt"
+
+
 
 const defaultMaxMemory = 32 << 20 // 32MB
 
@@ -41,11 +44,39 @@ func Create(r * http.Request, schema interface{}) (*RequestSchema) {
 	return &RequestSchema{ Request: r, Schema: schema, ValueOfSchema: valueOf, TypeOfSchema: typeOf }
 }
 
-func (self * RequestSchema) GetTo(fieldName string, value interface{}) {
+func (self * RequestSchema) GetTo(name string, value interface{}) error {
 	// get the value from pointer (Elem())
-	valueType := reflect.TypeOf(value)
+	valueValue := reflect.ValueOf(value).Elem()
+	valueType := valueValue.Type()
+
+	if ! valueValue.CanSet() {
+		panic("the value can not be set.")
+	}
+
 	// valueType.Type.Name()
-	_ = valueType
+	if requestValues , ok := self.Request.Form[ name ]; ok && len(requestValues) > 0 {
+		newValue, err := parseStringByType(requestValues[0], valueType)
+		if err != nil {
+			return err
+		}
+		switch t := newValue.(type) {
+		default:
+			panic( fmt.Sprintf("unsupported type %s" , t))
+		case int32:
+			valueValue.SetInt( int64(newValue.(int32)) )
+		case int64:
+			valueValue.SetInt(newValue.(int64))
+		case int:
+			valueValue.SetInt( int64(newValue.(int)) )
+		case string:
+			valueValue.SetString(newValue.(string))
+		case float64:
+			valueValue.SetFloat(newValue.(float64))
+		case float32:
+			valueValue.SetFloat( float64(newValue.(float32)) )
+		}
+	}
+	return nil
 }
 
 func parseStringByType(value string, typeInfo reflect.Type) (interface{}, error) {

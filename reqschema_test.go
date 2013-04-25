@@ -46,6 +46,18 @@ func TestRequestSchema(t *testing.T) {
 	if id64.(int64) != 64 {
 		t.Errorf("%d should be 64", id64)
 	}
+
+	var id2 int64 = 0
+	err = rschema.GetTo("id",&id2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(id2)
+	if id2 != 13 {
+		t.Error("%d is not equal to 13", id2)
+	}
+
+
 	_ = rschema
 	_ = query
 	_ = err
