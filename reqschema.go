@@ -3,6 +3,7 @@ import "reflect"
 import "net/http"
 import "strconv"
 import "fmt"
+import "encoding/json"
 
 const defaultMaxMemory = 32 << 20 // 32MB
 
@@ -12,9 +13,10 @@ Synopsis
 import "reqschema"
 
 type UserAuthRequest struct {
-	UserId	 `field:id		 type:integer`
-	UserName `field:username type:string`
-	Password `field:password type:string`
+	UserId	 int `param:"id"`
+	UserName string `param:"username"`
+	Password string `param:"password"`
+	Resource string `param:"resource" decode:"json"`
 }
 
 func userAuthRequestHandler( w http.ResponseWriter, r * http.Request)
@@ -52,7 +54,7 @@ The given value must be addressable, so that we can set value via reflect.
 
 Returns (found, error)
 */
-func (self * RequestSchema) GetTo(name string, value interface{}) (bool,error) {
+func (self * RequestSchema) GetParamTo(paramName string, value interface{}) (bool,error) {
 	// get the value from pointer (Elem())
 	valueValue := reflect.ValueOf(value).Elem()
 	valueType := valueValue.Type()
@@ -61,8 +63,7 @@ func (self * RequestSchema) GetTo(name string, value interface{}) (bool,error) {
 		panic("the value can not be set.")
 	}
 
-	// valueType.Type.Name()
-	if requestValues , ok := self.Request.Form[ name ]; ok && len(requestValues) > 0 {
+	if requestValues , ok := self.Request.Form[ paramName ]; ok && len(requestValues) > 0 {
 		newValue, err := parseStringByType(requestValues[0], valueType)
 		if err != nil {
 			return true, err
@@ -156,7 +157,22 @@ func (self * RequestSchema) Get(name string) (interface{}, error) {
 
 	// found value in form
 	if requestValues , ok := self.Request.Form[ paramName ]; ok && len(requestValues) > 0 {
-		return parseStringByType(requestValues[0], field.Type)
+		value, err := parseStringByType(requestValues[0], field.Type)
+
+		if err != nil {
+			return nil, err
+		}
+
+		decodeType := field.Tag.Get("decode")
+		if decodeType == "json" && field.Type.Name() == "string" {
+			var data interface{}
+			err := json.Unmarshal( []byte(value.(string)) , &data)
+			if err != nil {
+				return nil, nil
+			}
+			return data, nil
+		}
+		return value, nil
 	}
 	return nil, nil
 }

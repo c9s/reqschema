@@ -2,7 +2,42 @@ package reqschema
 import "testing"
 import "net/http"
 import "net/url"
+import "encoding/json"
 
+func TestRequestSchemaWithDecoder(t *testing.T) {
+	resource := map[string]string {
+		"name": "John",
+	}
+	jsonBytes, err := json.Marshal(resource)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	req := &http.Request{Method: "GET"}
+	req.URL, _ = url.Parse("http://www.google.com/search?resource=" + string(jsonBytes) )
+	if resource := req.FormValue("resource"); resource == "" {
+		t.Error("resource param not found")
+	}
+
+	type ResourceRequest struct {
+		Resource string `param:"resource" decode:"json"`
+	}
+
+	rschema := Create(req, &ResourceRequest{})
+	resourceData, err := rschema.Get("Resource")
+
+	t.Log(resourceData)
+
+	if _, ok := resourceData.(map[string]interface{})[ "name" ] ; ! ok {
+		t.Error("name not found")
+	}
+
+	if err != nil {
+		t.Error(err)
+	}
+	_ = resourceData
+}
 
 
 func TestRequestSchema(t *testing.T) {
@@ -48,7 +83,7 @@ func TestRequestSchema(t *testing.T) {
 	}
 
 	var id2 int64 = 0
-	found, err := rschema.GetTo("id",&id2)
+	found, err := rschema.GetParamTo("id",&id2)
 	if err != nil {
 		t.Error(err)
 	}
